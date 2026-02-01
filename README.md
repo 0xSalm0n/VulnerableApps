@@ -17,7 +17,7 @@
 
 ---
 
-## 🏗️ Android Architecture Deep Dive
+## Android Architecture Deep Dive
 
 ### The Attack Surface
 
@@ -61,7 +61,7 @@ adb root && adb disable-verity && adb reboot
 
 ---
 
-## 🔧 Testing Environment Setup
+## Testing Environment Setup
 
 ### Essential Toolkit
 
@@ -105,7 +105,7 @@ adb remount
 
 ---
 
-## 💀 ADB Red Teaming
+## ADB Red Teaming
 
 ### Port Forwarding & Reverse Shells
 
@@ -180,7 +180,7 @@ adb logcat -d | grep -i "sqlitedb" > db_operations.txt
 
 ---
 
-## 🔬 Static Analysis - Reverse Engineering
+## Static Analysis - Reverse Engineering
 
 ### APK Extraction & Decompilation
 
@@ -302,7 +302,7 @@ grep "android:usesCleartextTraffic=\"true\"" AndroidManifest.xml
 
 ---
 
-## ⚡ Dynamic Analysis - Runtime Manipulation
+## Dynamic Analysis - Runtime Manipulation
 
 ### Frida Framework Mastery
 
@@ -466,7 +466,7 @@ run app.broadcast.sniff --action android.intent.action.BOOT_COMPLETED
 
 ---
 
-## 🌐 Network Interception & MiTM
+## Network Interception & MiTM
 
 ### Burp Suite Configuration
 
@@ -535,7 +535,7 @@ def response(flow: http.HTTPFlow) -> None:
 
 ---
 
-## 🎯 Exploitation Techniques
+## Exploitation Techniques
 
 ### 1. Content Provider Exploitation
 
@@ -665,7 +665,7 @@ webView.addJavascriptInterface(new JavaScriptInterface(), "Android");
 
 ---
 
-## 🛡️ Root Detection & SSL Pinning Bypass
+## Root Detection & SSL Pinning Bypass
 
 ### Root Detection Methods & Bypasses
 
@@ -725,7 +725,7 @@ android sslpinning disable
 
 ---
 
-## 💾 Data Extraction & Exfiltration
+## Data Extraction & Exfiltration
 
 ### Database Extraction
 
@@ -815,7 +815,7 @@ Java.perform(function() {
 
 ---
 
-## 📋 Master Cheatsheet
+## Master Cheatsheet
 
 ### Quick Reference Commands
 
@@ -1065,7 +1065,7 @@ Java.perform(function() {
 
 ---
 
-## 🎓 Final Notes
+## Final Notes
 
 ### Recommended Lab Setup
 1. **Physical Device**: Rooted Pixel 3a (Magisk + EdXposed)
