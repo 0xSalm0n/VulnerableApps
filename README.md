@@ -1,8 +1,5 @@
 # 📱 Android Penetration Testing Notes
 
-> **Target Audience:** Senior Security Engineers, Red Teamers, Advanced Mobile Penetration Testers  
-> **Philosophy:** Exploitation-first. Theory is assumed. Commands are king.
-
 ---
 
 ## 📑 Table of Contents
